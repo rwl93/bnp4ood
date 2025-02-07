@@ -1,0 +1,12 @@
+torch==2.6.0+cu126
+torchaudio==2.6.0+cu126
+torchvision==0.21.0+cu126
+jaxtyping==0.2.38
+scikit-learn==1.6.1
+matplotlib==3.10.0
+tqdm==4.67.1
+pandas==2.2.3
+jupyter
+seaborn==0.13.2
+Cython==3.0.11
+hips @ git+https://github.com/HIPS/hips-lib.git

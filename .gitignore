@@ -1,0 +1,10 @@
+**__pycache__
+
+# Data files
+**.pkl
+**.pt
+**.part
+
+# Results and logs
+openood_exps
+**.pdf
