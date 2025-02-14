@@ -117,7 +117,7 @@ Ensure that the required python packages in
 ## Vision Transformer Features
 ### Downloading Features
 We provide the features we generated from the OpenOOD experiments in our release
-[here](https://github.com/rwl93/bnp4ood). Before running the experiments, you
+[here](https://github.com/rwl93/bnp4ood/releases/tag/vit-b%2F16-feats). Before running the experiments, you
 need to combine `vit-b-16-img1k-feats-part*.pkl` by running the script:
 ```sh
 python combine_partial_feats.py --feats-file-prefix vit-b-16-img1k-feats
