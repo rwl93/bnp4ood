@@ -20,13 +20,13 @@ def main(args):
     data = torch.load(args.feats_file, weights_only=False)
     feats = data["feats"]
     labels = data["labels"]
-    batch_size = len(feats) // args.num_parts
+    batch_size = len(feats) // args.num_parts + 1
     for i in range(args.num_parts):
         start = i * batch_size
         end = (i + 1) * batch_size
-        if end > len(feats): end = -1
-        curr_feats = feats[start:end]
-        curr_labels = labels[start:end]
+        print(f"start {start} end {end} batch_size {batch_size}")
+        curr_feats = feats[start:end].clone()
+        curr_labels = labels[start:end].clone()
         curr_outfile = f"{args.outfile_prefix}{i}.part"
         print(f"Saving part {i} to {curr_outfile}")
         torch.save(dict(feats=curr_feats, labels=curr_labels), curr_outfile)
