@@ -5,14 +5,14 @@ cluster (_i.e._ an outlier). Here we provide implementations of hierarchical
 Dirichlet process mixture models (DPMM) with Gaussian likelihoods for OOD
 detection. We provide expectation maximization methods for efficient inference
 and demonstrate their effectiveness of our approach on the
-[OpenOOD](https://zjysteven.github.io/OpenOOD/) benchmark. 
+[OpenOOD](https://zjysteven.github.io/OpenOOD/) benchmark.
 We analyze the covariance structure of the ViT-B/16 (DeiT) features for the Imagenet dataset
 which motivates the application of hierarchical DPMMs and the coupled hierarchical DPMM with diagonal covariance
 [here](./ImagenetDataAnalysis.ipynb).
 We also generate synthetic datasets to demonstate the performance of our
 approach in different data regimes [here](./SyntheticExperiments.ipynb).
 For full details on our approach and experiments, please see our paper
-["A Bayesian Nonparametric Perspective on Mahalanobis Distance for Out of Distribution Detection"]().
+["A Bayesian Nonparametric Perspective on Mahalanobis Distance for Out of Distribution Detection"](https://arxiv.org/abs/2502.08695v1).
 
 ## Imagenet Dataset Analysis
 The covariance analysis figures discussed in the paper can be generated using the notebook
@@ -46,7 +46,7 @@ The experiments can be recreated in the notebook [SyntheticExperiments.ipynb](./
 
 <table>
 <tr>
-  <td colspan=2> 
+  <td colspan=2>
   <td colspan=3 style="text-align:center;">Near</td>
   <td colspan=4 style="text-align:center;">Far</td>
 </tr>
@@ -59,7 +59,7 @@ The experiments can be recreated in the notebook [SyntheticExperiments.ipynb](./
             <td> 88.66 <td> 85.62 <td> 84.62 <td> 86.30
 </tr>
 <tr>
-    <td> Temp. MSP <td><b> 80.89 
+    <td> Temp. MSP <td><b> 80.89
                 <td> 73.29 <td> 81.27 <td> 77.28
                 <td> 91.23 <td> 87.81 <td> 86.78 <td> 88.61
 </tr>
@@ -71,10 +71,10 @@ The experiments can be recreated in the notebook [SyntheticExperiments.ipynb](./
 <tr>
     <td> RMDS <td> 80.41
             <td> 72.79 <td> 87.28 <td> 80.03
-            <td><b> 96.09 <td> 92.29 <td> 89.38 <td> 92.59 
+            <td><b> 96.09 <td> 92.29 <td> 89.38 <td> 92.59
 </tr>
 <tr>
-    <td colspan=9 style="text-align:center;">Hierarchical DPMMs 
+    <td colspan=9 style="text-align:center;">Hierarchical DPMMs
 </tr>
 <tr>
 <td> Tied <td> 80.41
@@ -83,7 +83,7 @@ The experiments can be recreated in the notebook [SyntheticExperiments.ipynb](./
 </tr>
 <tr>
 <td> Full   <td> 76.79
-            <td> 62.84 <td> 78.48 <td> 70.66 
+            <td> 62.84 <td> 78.48 <td> 70.66
             <td> 85.88 <td> 85.03 <td> 88.02 <td> 86.31
 </tr>
 <tr>
