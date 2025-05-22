@@ -11,7 +11,11 @@ from torch import nn
 from torch import Tensor
 from tqdm import trange
 # Modules
-from bnp4ood.openood_dataset_utils import setup_dataloaders, openood_eval, NUM_CLASSES
+from bnp4ood.openood_dataset_utils import (
+    setup_dataloaders, openood_eval,
+    NUM_CLASSES, CIFAR10_NUM_CLASSES, CIFAR100_NUM_CLASSES,
+    DATASET_FEATFILES, CIFAR10_FEATFILES, CIFAR100_FEATFILES,
+)
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -41,7 +45,10 @@ parser.add_argument("--wd", type=float, default=0.001)
 parser.add_argument("--lr-min", type=float, default=0.0)
 parser.add_argument("--lr-cosineannealing", action="store_true")
 parser.add_argument("--features", type=str, default="vit-b-16")
-
+# Dataset
+parser.add_argument("--id-data", type=str, default="imagenet")
+parser.add_argument("--model-iter", type=int, default=-1)
+parser.add_argument("--data-root", type=str, default="./")
 
 def msp_score_fun(X: Float[Tensor, "num_samples dim"], net: nn.Module,
                   return_preds: bool = False, T=1.):
@@ -65,7 +72,23 @@ def main(args):
     logger.info(args)
 
     # Load datasets
+    if args.id_data == "imagenet":
+        dset_featfiles = DATASET_FEATFILES
+        num_classes = NUM_CLASSES
+    elif args.id_data == "cifar10":
+        dset_featfiles = CIFAR10_FEATFILES
+        num_classes = CIFAR10_NUM_CLASSES
+    elif args.id_data == "cifar100":
+        dset_featfiles = CIFAR100_FEATFILES
+        num_classes = CIFAR100_NUM_CLASSES
+    else:
+        raise ValueError(f"Unknown dataset {args.id_data}")
+
     dataset_dict, id_feats, id_labels = setup_dataloaders(
+        model_iter=args.model_iter,
+        dataset_featfiles=dset_featfiles,
+        data_root=args.data_root,
+        K=num_classes,
         batch_size=args.batch_size,
         autowhiten=args.autowhiten,
         autowhiten_factor=args.autowhiten_factor,
@@ -80,7 +103,7 @@ def main(args):
     # Train linear layer with CE
     torch.manual_seed(0)
     logger.info("Training linear layer with CE")
-    net = nn.Linear(D, NUM_CLASSES, bias=True)
+    net = nn.Linear(D, num_classes, bias=True)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.wd)
     lr_scheduler = None

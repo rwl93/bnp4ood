@@ -12,7 +12,11 @@ import sys
 import torch
 # Module
 import bnp4ood.em_coupled_diag_hdpmm as cdhdpmm
-from bnp4ood.openood_dataset_utils import setup_dataloaders, get_sufficient_stats, openood_eval
+from bnp4ood.openood_dataset_utils import (
+    setup_dataloaders, get_sufficient_stats, openood_eval
+    NUM_CLASSES, CIFAR10_NUM_CLASSES, CIFAR100_NUM_CLASSES,
+    DATASET_FEATFILES, CIFAR10_FEATFILES, CIFAR100_FEATFILES,
+)
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -35,6 +39,10 @@ parser.add_argument("--usepca", action="store_true")
 parser.add_argument("--pca_dim", type=int, default=-1)
 parser.add_argument("--batch_size", type=int, default=256)
 parser.add_argument("--features", type=str, default="vit-b-16")
+# Dataset
+parser.add_argument("--id-data", type=str, default="imagenet")
+parser.add_argument("--model-iter", type=int, default=-1)
+parser.add_argument("--data-root", type=str, default="./")
 
 
 def main(args):
@@ -47,7 +55,23 @@ def main(args):
     logger.info(args)
 
     # Load datasets
+    if args.id_data == "imagenet":
+        dset_featfiles = DATASET_FEATFILES
+        num_classes = NUM_CLASSES
+    elif args.id_data == "cifar10":
+        dset_featfiles = CIFAR10_FEATFILES
+        num_classes = CIFAR10_NUM_CLASSES
+    elif args.id_data == "cifar100":
+        dset_featfiles = CIFAR100_FEATFILES
+        num_classes = CIFAR100_NUM_CLASSES
+    else:
+        raise ValueError(f"Unknown dataset {args.id_data}")
+
     dataset_dict, id_feats, id_labels = setup_dataloaders(
+        model_iter=args.model_iter,
+        dataset_featfiles=dset_featfiles,
+        data_root=args.data_root,
+        K=num_classes,
         batch_size=args.batch_size,
         autowhiten=args.autowhiten,
         autowhiten_factor=args.autowhiten_factor,
@@ -60,7 +84,7 @@ def main(args):
     D = init_feats.shape[-1]
 
     Nk, sumx, _, sumxsq = get_sufficient_stats(
-        X=id_feats, Y=id_labels,
+        X=id_feats, Y=id_labels, K=num_classes,
     )
 
     # Setup Initial priors

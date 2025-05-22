@@ -1,6 +1,7 @@
 """Dataset utilities for loading and processing the OpenOOD datasets."""
 # Python
 import logging
+import os
 from typing import Callable
 # Third Party
 from jaxtyping import Float, Int
@@ -44,9 +45,52 @@ DATASET_FEATFILES = dict(
         ),
     ),
 )
+_template = "-{dset}-{split}-feats.pkl"
+CIFAR10_NUM_CLASSES = 10
+CIFAR100_NUM_CLASSES = 100
+CIFAR10_TRAIN_FNAME = "-s{itr}-cifar10-feats.pkl"
+CIFAR100_TRAIN_FNAME = "-s{itr}-cifar100-feats.pkl"
+CIFAR10_FEATFILES = dict(
+    id=dict(
+        train=CIFAR10_TRAIN_FNAME,
+        test="-s{itr}" + _template.format(dset="cifar10", split="test"),
+        val="-s{itr}" + _template.format(dset="cifar10", split="val"),
+    ),
+    ood=dict(
+        near=dict(
+            cifar100="-s{itr}" + _template.format(dset="cifar10", split="near-cifar100"),
+            tin="-s{itr}" + _template.format(dset="cifar10", split="near-tin"),
+        ),
+        far=dict(
+            mnist="-s{itr}" + _template.format(dset="cifar10", split="far-mnist"),
+            places365="-s{itr}" + _template.format(dset="cifar10", split="far-places365"),
+            svhn="-s{itr}" + _template.format(dset="cifar10", split="far-svhn"),
+            texture="-s{itr}" + _template.format(dset="cifar10", split="far-texture"),
+        ),
+    ),
+)
+CIFAR100_FEATFILES = dict(
+    id=dict(
+        train=CIFAR100_TRAIN_FNAME,
+        test="-s{itr}" + _template.format(dset="cifar100", split="test"),
+        val="-s{itr}" + _template.format(dset="cifar100", split="val"),
+    ),
+    ood=dict(
+        near=dict(
+            cifar10="-s{itr}" + _template.format(dset="cifar100", split="near-cifar10"),
+            tin="-s{itr}" + _template.format(dset="cifar100", split="near-tin"),
+        ),
+        far=dict(
+            mnist="-s{itr}" + _template.format(dset="cifar100", split="far-mnist"),
+            places365="-s{itr}" + _template.format(dset="cifar100", split="far-places365"),
+            svhn="-s{itr}" + _template.format(dset="cifar100", split="far-svhn"),
+            texture="-s{itr}" + _template.format(dset="cifar100", split="far-texture"),
+        ),
+    ),
+)
 
 
-def load_vit_feats(fname: str) -> tuple[
+def load_feats(fname: str) -> tuple[
         Float[Tensor, "num_samples dim"], Int[Tensor, "num_samples"]]:
     dat = torch.load(fname)
     return dat["feats"], dat["labels"]
@@ -68,6 +112,7 @@ def auto_whiten(
             labels: Int[Tensor, "num_samples"],
             autowhiten_factor: float = 1e-7,
             autowhiten_dim: int = 0,
+            K: int = NUM_CLASSES,
     ) -> tuple[Float[Tensor, "num_samples newdim"], Callable]:
     """Marginal covariance whitening and dropping of degenerate dimensions
     followed by projection into the eigenspace of the average within-class
@@ -90,7 +135,7 @@ def auto_whiten(
     X_whitened = whiten(feats)
 
     # Project into eigenbasis of average within-class covariance
-    muk_hat = torch.stack([X_whitened[labels == k].mean(0) for k in range(NUM_CLASSES)])
+    muk_hat = torch.stack([X_whitened[labels == k].mean(0) for k in range(K)])
     diff = X_whitened - muk_hat[labels]
     Psi0_star = torch.einsum("ni,nj->ij", diff, diff) / len(X_whitened)
     evalsP, evecsP = torch.linalg.eigh(Psi0_star)
@@ -100,6 +145,7 @@ def auto_whiten(
 
 
 def setup_dataloaders(
+        model_iter: int = -1,
         dataset_featfiles: dict = DATASET_FEATFILES,
         batch_size: int = 1024,
         shuffle : bool = True,
@@ -109,19 +155,25 @@ def setup_dataloaders(
         use_pca: bool = False,
         pca_dim: int = -1,
         features: str = "vit-b-16",
+        data_root: str = "./",
+        K: int = NUM_CLASSES,
     ) -> dict:
     def fname2loader(fname):
-        feats, labels = load_vit_feats(fname)
+        feats, labels = load_feats(fname)
         feats = preprocessor(feats)
         return get_dataloader(feats, labels, batch_size=batch_size, shuffle=shuffle)
 
     logger.info(f"Loading datasets with features: {features}")
     datasets = {"id": dict(), "ood": dict()}
     # Load train set first to setup PCA / whitening
-    feats, labels = load_vit_feats(features + dataset_featfiles["id"]["train"])
+    train_fname = os.path.join(data_root, features + dataset_featfiles["id"]["train"])
+    if model_iter >= 0:
+        train_fname = train_fname.format(itr=model_iter)
+    feats, labels = load_feats(train_fname)
     preprocessor = lambda X: X
     if autowhiten:
-        feats, preprocessor = auto_whiten(feats, labels, autowhiten_factor, autowhiten_dim=autowhiten_dim)
+        feats, preprocessor = auto_whiten(feats, labels, autowhiten_factor,
+                                          autowhiten_dim=autowhiten_dim, K=K)
     elif use_pca:
         logger.info(f"Using PCA with {pca_dim} components")
         pca = PCA(n_components=pca_dim)
@@ -137,11 +189,17 @@ def setup_dataloaders(
             if isinstance(v, dict):
                 datasets[base_k][k] = dict()
                 for inner_k, inner_v in v.items():
-                    datasets[base_k][k][inner_k] = fname2loader(features + inner_v)
+                    fname = os.path.join(data_root, features + inner_v)
+                    if model_iter >= 0:
+                        fname = fname.format(itr=model_iter)
+                    datasets[base_k][k][inner_k] = fname2loader(fname)
             else:
                 if k in ["train", "val"]:
                     continue
-                datasets[base_k][k] = fname2loader(features + v)
+                fname = os.path.join(data_root, features + v)
+                if model_iter >= 0:
+                    fname = fname.format(itr=model_iter)
+                datasets[base_k][k] = fname2loader(fname)
     return datasets, feats, labels
 
 
@@ -176,9 +234,9 @@ def get_sufficient_stats(
         X = X.to(DEVICE)
         Y = Y.to(DEVICE)
         Nk = torch.bincount(Y).float()
-        sumx = torch.stack([X[Y == k].sum(0) for k in range(NUM_CLASSES)])
-        sumxxT = torch.stack([torch.einsum("ij,ik->jk", X[Y == k], X[Y == k]) for k in range(NUM_CLASSES)])
-        sumxsq = torch.stack([(X[Y == k]**2).sum(0) for k in range(NUM_CLASSES)])
+        sumx = torch.stack([X[Y == k].sum(0) for k in range(K)])
+        sumxxT = torch.stack([torch.einsum("ij,ik->jk", X[Y == k], X[Y == k]) for k in range(K)])
+        sumxsq = torch.stack([(X[Y == k]**2).sum(0) for k in range(K)])
     return Nk, sumx, sumxxT, sumxsq
 
 
@@ -210,6 +268,8 @@ def calc_scores(loader: torch.utils.data.DataLoader,
 
 def openood_eval(dataset_dict, params,
                  score_fn: Callable, model="", **kwargs) -> dict:
+    if len(params) > 1:
+        prior_params, posterior_params = params
     id_scores, acc = calc_scores(dataset_dict["id"]["test"],
                                  params,
                                  score_fn,
